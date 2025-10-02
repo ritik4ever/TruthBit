@@ -8,6 +8,7 @@ import Dashboard from './pages/Dashboard';
 import Publish from './pages/Publish';
 import Article from './pages/Article';
 import Verify from './pages/Verify';
+import Sign from './pages/Sign';
 
 function App() {
     const { address, isConnected } = useAccount();
@@ -50,6 +51,10 @@ function App() {
                         <Route
                             path="/dashboard"
                             element={user ? <Dashboard user={user} /> : <Navigate to="/" />}
+                        />
+                        <Route
+                            path="/sign"
+                            element={user ? <Sign user={user} /> : <Navigate to="/" />}
                         />
                         <Route
                             path="/publish"

@@ -154,6 +154,37 @@ function Article({ user }) {
                         <h3 style={{ fontSize: '24px', fontWeight: 600, marginBottom: '12px' }}>
                             Encrypted Content
                         </h3>
+
+                        {article.encryptionData?.timeLocked && (
+                            <div style={{
+                                background: '#FFF4E6',
+                                padding: '16px',
+                                borderRadius: '8px',
+                                marginBottom: '24px',
+                                border: '2px solid #FF9500'
+                            }}>
+                                <p style={{ fontWeight: 600, color: '#FF9500', marginBottom: '8px' }}>
+                                    Time-Locked Content
+                                </p>
+                                <p style={{ fontSize: '14px', color: 'var(--dark-medium)' }}>
+                                    This content will automatically unlock on:<br />
+                                    <strong>{new Date(article.encryptionData.unlockDate).toLocaleString()}</strong>
+                                </p>
+                                {new Date() >= new Date(article.encryptionData.unlockDate) && (
+                                    <p style={{
+                                        marginTop: '12px',
+                                        padding: '8px',
+                                        background: '#E7F5EC',
+                                        borderRadius: '4px',
+                                        color: 'var(--secondary)',
+                                        fontWeight: 600
+                                    }}>
+                                        Time-lock has expired! Content can now be decrypted.
+                                    </p>
+                                )}
+                            </div>
+                        )}
+
                         <p style={{
                             color: 'var(--dark-medium)',
                             marginBottom: '32px',

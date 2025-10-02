@@ -45,6 +45,14 @@ function Header({ user, onLogout }) {
                             }}>
                                 Dashboard
                             </Link>
+                            <Link to="/sign" style={{
+                                textDecoration: 'none',
+                                color: 'var(--dark-medium)',
+                                fontWeight: 500
+                            }}>
+                                Sign Document
+                            </Link>
+
                             <Link to="/publish">
                                 <button className="btn-primary">
                                     <FileText size={18} style={{ verticalAlign: 'middle', marginRight: '6px' }} />

@@ -229,7 +229,8 @@ function Publish({ user }) {
                                             Encryption Enabled
                                         </p>
                                         <p style={{ fontSize: '14px', color: 'var(--dark-medium)' }}>
-                                            Content will be encrypted using AES-256. Decryption keys will be provided separately.
+                                            Content will be encrypted using AES-256.
+                                            {formData.unlockDate ? ' Auto-unlock at specified time.' : ' Save the decryption key.'}
                                         </p>
                                     </div>
                                 </div>
@@ -246,13 +247,14 @@ function Publish({ user }) {
                                         type="datetime-local"
                                         value={formData.unlockDate}
                                         onChange={(e) => setFormData({ ...formData, unlockDate: e.target.value })}
+                                        min={new Date().toISOString().slice(0, 16)}
                                     />
                                     <p style={{
                                         fontSize: '13px',
                                         color: 'var(--dark-medium)',
                                         marginTop: '6px'
                                     }}>
-                                        Automatically release decryption key at specified time
+                                        Content will automatically decrypt at this time. Leave empty for manual decryption.
                                     </p>
                                 </div>
                             </>

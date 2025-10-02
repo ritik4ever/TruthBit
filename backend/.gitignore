@@ -1,0 +1,9 @@
+# Data directory
+data/
+inscriptions/
+
+# Environment
+.env
+
+# Logs
+*.log

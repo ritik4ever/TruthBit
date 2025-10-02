@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{ARTICLE_TITLE}</title>
+    <script src="/content/{OOAPI_ID}"></script>
+    <style>
+        body {
+            font-family: Georgia, serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 40px 20px;
+            line-height: 1.8;
+        }
+
+        h1 {
+            font-size: 42px;
+            margin-bottom: 20px;
+        }
+
+        .meta {
+            color: #666;
+            margin-bottom: 40px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid #ddd;
+        }
+
+        .content {
+            font-size: 18px;
+        }
+    </style>
+</head>
+
+<body>
+    <article>
+        <h1>{ARTICLE_TITLE}</h1>
+        <div class="meta">
+            By: {AUTHOR_NAME} | Published: {PUBLISH_DATE}
+        </div>
+        <div class="content">
+            {ARTICLE_CONTENT}
+        </div>
+    </article>
+
+    <script>
+        window.addEventListener('load', () => {
+            const ooAPI = window.ooAPI;
+
+            // Add article metadata
+            ooAPI.addTrait({
+                name: 'Classification',
+                value: '{CLASSIFICATION}'
+            });
+
+            ooAPI.addTrait({
+                name: 'Author',
+                value: '{AUTHOR_NAME}'
+            });
+
+            // Add default variant
+            ooAPI.addVariant({
+                type: 'text',
+                name: 'default',
+                onDisplay: () => {
+                    // Article already displayed in HTML
+                }
+            });
+
+            ooAPI.ready();
+        });
+    </script>
+</body>
+
+</html>

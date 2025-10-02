@@ -1,0 +1,73 @@
+# Node modules
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Environment variables
+.env
+.env.local
+.env.development
+.env.test
+.env.production
+
+# Bitcoin data
+.bitcoin/
+bitcoin-*/
+ord-*/
+
+# Backend data
+backend/data/
+backend/data/inscriptions/
+*.redb
+
+# Build outputs
+dist/
+build/
+out/
+
+# Logs
+logs/
+*.log
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# OS
+Thumbs.db
+.DS_Store
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# Private keys and sensitive data
+*.key
+*.pem
+wallet.dat
+*.cookie
+
+# Package manager
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# Testing
+coverage/
+.nyc_output/
+
+# Bitcoin Core
+debug.log
+fee_estimates.dat
+mempool.dat
+peers.dat
+banlist.json
+
+# Ord inscriptions temp files
+inscriptions/

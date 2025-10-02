@@ -1,0 +1,23 @@
+{
+    "name": "truthbit-backend",
+    "version": "1.0.0",
+    "type": "module",
+    "scripts": {
+        "start": "node src/server.js",
+        "dev": "node --watch src/server.js",
+        "start:real": "MOCK_INSCRIPTIONS=false node src/server.js",
+        "start:mock": "MOCK_INSCRIPTIONS=true node src/server.js",
+        "generate-secret": "node -e \"console.log('JWT_SECRET=' + require('crypto').randomBytes(64).toString('hex'))\""
+    },
+    "dependencies": {
+        "bitcoinjs-lib": "^7.0.0",
+        "cors": "^2.8.5",
+        "dotenv": "^16.6.1",
+        "ecpair": "^3.0.0",
+        "express": "^4.18.2",
+        "express-rate-limit": "^7.1.5",
+        "form-data": "^4.0.0",
+        "node-fetch": "^3.3.2",
+        "tiny-secp256k1": "^2.2.4"
+    }
+}

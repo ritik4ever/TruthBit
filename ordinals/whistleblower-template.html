@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Encrypted Document</title>
+    <script src="/content/{OOAPI_ID}"></script>
+    <style>
+        body {
+            font-family: sans-serif;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 40px 20px;
+            text-align: center;
+        }
+
+        .lock-icon {
+            font-size: 64px;
+            margin-bottom: 20px;
+        }
+
+        input {
+            padding: 12px;
+            font-size: 16px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            width: 100%;
+            max-width: 400px;
+            margin-bottom: 16px;
+        }
+
+        button {
+            padding: 12px 24px;
+            font-size: 16px;
+            background: #FF385C;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        #content {
+            display: none;
+            text-align: left;
+            margin-top: 40px;
+            line-height: 1.8;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="lock-screen">
+        <div class="lock-icon">🔒</div>
+        <h1>Encrypted Content</h1>
+        <p>Enter decryption key to view this whistleblower document</p>
+        <input type="text" id="key-input" placeholder="Decryption key">
+        <br>
+        <button onclick="decrypt()">Decrypt</button>
+    </div>
+
+    <div id="content">
+        <h1>{TITLE}</h1>
+        <div id="decrypted-content"></div>
+    </div>
+
+    <script>
+        const encryptedContent = "{ENCRYPTED_CONTENT}";
+
+        function decrypt() {
+            const key = document.getElementById('key-input').value;
+
+            try {
+                // Simple decryption (use proper crypto in production)
+                const decrypted = atob(encryptedContent);
+
+                document.getElementById('lock-screen').style.display = 'none';
+                document.getElementById('content').style.display = 'block';
+                document.getElementById('decrypted-content').innerHTML = decrypted;
+            } catch (error) {
+                alert('Invalid decryption key');
+            }
+        }
+
+        window.addEventListener('load', () => {
+            const ooAPI = window.ooAPI;
+
+            ooAPI.addTrait({
+                name: 'Classification',
+                value: 'Whistleblower'
+            });
+
+            ooAPI.addVariant({
+                type: 'encrypted',
+                name: 'locked',
+                onDisplay: () => {
+                    // Show lock screen
+                }
+            });
+
+            ooAPI.ready();
+        });
+    </script>
+</body>
+
+</html>

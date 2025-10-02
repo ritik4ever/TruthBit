@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TruthVault Identity</title>
+    <script src="/content/{OOAPI_ID}"></script>
+</head>
+
+<body>
+    <script>
+        const identityData = {
+            name: "{IDENTITY_NAME}",
+            credentialType: "{CREDENTIAL_TYPE}",
+            verificationLevel: "{VERIFICATION_LEVEL}",
+            publicKey: "{PUBLIC_KEY}"
+        };
+
+        // Setup Open Ordinal API
+        window.addEventListener('load', () => {
+            const ooAPI = window.ooAPI;
+
+            // Add identity as asset
+            ooAPI.addAsset({
+                type: 'identity',
+                name: 'credential',
+                data: identityData
+            });
+
+            // Add verification badge variant
+            ooAPI.addVariant({
+                type: 'image',
+                name: 'badge',
+                onDisplay: () => {
+                    document.body.innerHTML = `
+            <div style="font-family: sans-serif; padding: 20px;">
+              <h2>${identityData.name}</h2>
+              <p>Type: ${identityData.credentialType}</p>
+              <p>Level: ${identityData.verificationLevel}</p>
+            </div>
+          `;
+                }
+            });
+
+            ooAPI.ready();
+        });
+    </script>
+</body>
+
+</html>

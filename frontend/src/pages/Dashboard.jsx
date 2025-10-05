@@ -34,7 +34,8 @@ function Dashboard({ user }) {
             const totalViews = userArticles.reduce((sum, article) => sum + (article.views || 0), 0);
 
             try {
-                const sigResponse = await fetch(`http://localhost:5000/api/signatures/by-address/${user.id}`);
+                const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+                const sigResponse = await fetch(`${API_URL}/api/signatures/by-address/${user.id}`);
                 const userSignatures = await sigResponse.json();
                 setSignatures(userSignatures);
 

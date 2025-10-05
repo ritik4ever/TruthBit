@@ -3,6 +3,9 @@ import { promisify } from 'util';
 import fs from 'fs/promises';
 import path from 'path';
 import crypto from 'crypto';
+import dotenv from 'dotenv';
+
+dotenv.config();
 
 const execAsync = promisify(exec);
 
@@ -10,20 +13,24 @@ class OrdinalInscriptionService {
     constructor() {
         this.bitcoinNetwork = process.env.BITCOIN_NETWORK || 'signet';
 
-        // Explicitly check for 'false' string - if undefined, default to true (mock mode)
+        // Mock mode configuration
         const mockEnv = process.env.MOCK_INSCRIPTIONS;
-        this.mockMode = mockEnv === undefined ? true : mockEnv !== 'false';
+        this.mockMode = mockEnv === undefined ? true : mockEnv === 'true';
 
         this.tempDir = './data/inscriptions';
-        this.rpcUrl = 'http://127.0.0.1:38332';
-        this.rpcUser = 'bitcoinrpc';
-        this.rpcPass = 'CHANGE_THIS_PASSWORD_12345';
+
+        // RPC Configuration from environment variables
+        this.rpcHost = process.env.BITCOIN_RPC_HOST || '127.0.0.1';
+        this.rpcPort = process.env.BITCOIN_RPC_PORT || '38332';
+        this.rpcUser = process.env.BITCOIN_RPC_USER || 'bitcoinrpc';
+        this.rpcPass = process.env.BITCOIN_RPC_PASSWORD || 'CHANGE_THIS_PASSWORD_12345';
+        this.rpcUrl = `http://${this.rpcHost}:${this.rpcPort}`;
         this.wallet = 'ord';
 
         console.log('OrdinalInscriptionService initialized:');
-        console.log('  MOCK_INSCRIPTIONS env:', process.env.MOCK_INSCRIPTIONS);
         console.log('  Mock mode:', this.mockMode);
         console.log('  Network:', this.bitcoinNetwork);
+        console.log('  RPC URL:', `${this.rpcHost}:${this.rpcPort}`);
     }
 
     async init() {
@@ -34,7 +41,7 @@ class OrdinalInscriptionService {
     async bitcoinRpc(method, params = []) {
         const rpcCall = {
             jsonrpc: '1.0',
-            id: 'truthvault',
+            id: 'truthbit',
             method,
             params
         };
@@ -123,19 +130,15 @@ class OrdinalInscriptionService {
             const contentBuffer = Buffer.from(content, 'utf8');
             const contentHash = crypto.createHash('sha256').update(content).digest('hex');
 
-            // Bitcoin OP_RETURN is limited to 80 bytes for standard relay
-            // For large content, store hash on-chain, full content locally
             let dataHex;
             let storageType;
 
             if (contentBuffer.length > 75) {
-                // Store "ord:" prefix + SHA256 hash (4 + 32 = 36 bytes)
                 const prefix = Buffer.from('ord:', 'utf8').toString('hex');
                 dataHex = prefix + contentHash;
                 storageType = 'hash';
                 console.log('Content size:', contentBuffer.length, 'bytes - storing hash on-chain');
             } else {
-                // Store full content on-chain
                 const ordPrefix = Buffer.from('ord', 'utf8').toString('hex');
                 dataHex = ordPrefix + contentBuffer.toString('hex');
                 storageType = 'full';
@@ -144,18 +147,15 @@ class OrdinalInscriptionService {
 
             console.log('OP_RETURN data size:', dataHex.length / 2, 'bytes');
 
-            // Create transaction with OP_RETURN (empty inputs - fundrawtransaction will add them)
             const outputs = [{ data: dataHex }];
             const rawTx = await this.bitcoinRpc('createrawtransaction', [[], outputs]);
 
-            // Fund transaction (adds inputs and change output automatically)
             console.log('Funding transaction...');
             const fundedResult = await this.bitcoinRpc('fundrawtransaction', [rawTx, {
                 feeRate: 0.00001,
                 changeAddress: changeAddress
             }]);
 
-            // Sign transaction
             console.log('Signing transaction...');
             const signedResult = await this.bitcoinRpc('signrawtransactionwithwallet', [fundedResult.hex]);
 
@@ -163,19 +163,16 @@ class OrdinalInscriptionService {
                 throw new Error('Transaction signing failed: ' + JSON.stringify(signedResult.errors || 'Unknown'));
             }
 
-            // Broadcast transaction
             console.log('Broadcasting transaction...');
             const txid = await this.bitcoinRpc('sendrawtransaction', [signedResult.hex]);
 
             const inscriptionId = `${txid}i0`;
 
-            console.log('✅ Inscription created successfully!');
+            console.log('Inscription created successfully!');
             console.log('   TXID:', txid);
             console.log('   Inscription ID:', inscriptionId);
-            console.log('   Storage:', storageType === 'hash' ? 'Hash on-chain, full content local' : 'Full content on-chain');
             console.log('   View: https://mempool.space/signet/tx/' + txid);
 
-            // Save full content locally
             const inscriptionData = {
                 inscriptionId,
                 txid,
@@ -237,17 +234,6 @@ class OrdinalInscriptionService {
             const data = await fs.readFile(filePath, 'utf8');
             return JSON.parse(data);
         } catch (error) {
-            if (!this.mockMode) {
-                try {
-                    const url = `http://localhost:8080/inscription/${inscriptionId}`;
-                    const response = await fetch(url);
-                    if (response.ok) {
-                        return await response.json();
-                    }
-                } catch (fetchError) {
-                    console.error('Failed to fetch from ord server:', fetchError);
-                }
-            }
             throw new Error('Inscription not found');
         }
     }

@@ -9,11 +9,11 @@ const router = express.Router();
 router.post('/identity/create', identityController.createIdentity);
 router.get('/identity/:id', identityController.getIdentity);
 
-// Content routes - NO AUTH REQUIRED
-router.post('/articles', contentController.createArticle);
-router.get('/articles', contentController.getArticles);
-router.get('/articles/:id', contentController.getArticle);
-router.post('/articles/:id/view', contentController.incrementView);
+// Content routes - FIXED PATHS
+router.post('/content/articles', contentController.createArticle);
+router.get('/content/articles', contentController.getArticles);
+router.get('/content/articles/:id', contentController.getArticle);
+router.post('/content/articles/:id/view', contentController.incrementView);
 
 // Verification routes
 router.get('/verify/:id', verificationController.verifyArticle);

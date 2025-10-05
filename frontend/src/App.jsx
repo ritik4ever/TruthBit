@@ -9,6 +9,8 @@ import Publish from './pages/Publish';
 import Article from './pages/Article';
 import Verify from './pages/Verify';
 import Sign from './pages/Sign';
+// REMOVED DUPLICATE: import Verify from './pages/Verify';
+
 
 function App() {
     const { address, isConnected } = useAccount();
@@ -61,7 +63,7 @@ function App() {
                             element={user ? <Publish user={user} /> : <Navigate to="/" />}
                         />
                         <Route path="/article/:id" element={<Article user={user} />} />
-                        <Route path="/verify/:id" element={<Verify />} />
+                        <Route path="/verify" element={<Verify />} />
                     </Routes>
                 </main>
                 <Footer />

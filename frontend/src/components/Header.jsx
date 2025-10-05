@@ -53,6 +53,14 @@ function Header({ user, onLogout }) {
                                 Sign Document
                             </Link>
 
+                            <Link to="/verify" style={{
+                                textDecoration: 'none',
+                                color: 'var(--dark-medium)',
+                                fontWeight: 500
+                            }}>
+                                Verify Document
+                            </Link>
+
                             <Link to="/publish">
                                 <button className="btn-primary">
                                     <FileText size={18} style={{ verticalAlign: 'middle', marginRight: '6px' }} />

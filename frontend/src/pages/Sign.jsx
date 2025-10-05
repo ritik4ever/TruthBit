@@ -40,6 +40,7 @@ function Sign({ user }) {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     documentHash,
+                    documentName: file.name, // Add document name
                     signerName: user.name,
                     signerAddress: address,
                     signature

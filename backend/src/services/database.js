@@ -108,6 +108,47 @@ class DatabaseService {
         return articles[index];
     }
 
+    // Save signature
+    async saveSignature(signature) {
+        const signatures = await this.getSignatures();
+        signatures.push(signature);
+        await fs.writeFile(
+            path.join(this.dataDir, 'signatures.json'),
+            JSON.stringify(signatures, null, 2)
+        );
+    }
+
+    // Get all signatures
+    async getSignatures(filters = {}) {
+        try {
+            const data = await fs.readFile(
+                path.join(this.dataDir, 'signatures.json'),
+                'utf8'
+            );
+            let signatures = JSON.parse(data);
+
+            if (filters.signerAddress) {
+                signatures = signatures.filter(s => s.signerAddress === filters.signerAddress);
+            }
+            if (filters.documentHash) {
+                signatures = signatures.filter(s => s.documentHash === filters.documentHash);
+            }
+
+            return signatures;
+        } catch (error) {
+            if (error.code === 'ENOENT') {
+                return [];
+            }
+            throw error;
+        }
+    }
+
+    // Get signature by ID
+    async getSignature(id) {
+        const signatures = await this.getSignatures();
+        return signatures.find(s => s.id === id);
+    }
+
     async incrementViews(id) {
         const article = await this.getArticle(id);
         if (article) {

@@ -1,13 +1,10 @@
-import { exec } from 'child_process';
-import { promisify } from 'util';
+import axios from 'axios';
 import fs from 'fs/promises';
 import path from 'path';
 import crypto from 'crypto';
 import dotenv from 'dotenv';
 
 dotenv.config();
-
-const execAsync = promisify(exec);
 
 class OrdinalInscriptionService {
     constructor() {
@@ -46,20 +43,23 @@ class OrdinalInscriptionService {
             params
         };
 
-        const command = `curl -s --user ${this.rpcUser}:${this.rpcPass} \
-            --data-binary '${JSON.stringify(rpcCall).replace(/'/g, "'\\''")}' \
-            -H 'content-type: text/plain;' \
-            ${this.rpcUrl}`;
-
         try {
-            const { stdout } = await execAsync(command);
-            const response = JSON.parse(stdout);
+            const response = await axios.post(this.rpcUrl, rpcCall, {
+                auth: {
+                    username: this.rpcUser,
+                    password: this.rpcPass
+                },
+                headers: {
+                    'Content-Type': 'text/plain'
+                },
+                timeout: 30000
+            });
 
-            if (response.error) {
-                throw new Error(response.error.message);
+            if (response.data.error) {
+                throw new Error(response.data.error.message);
             }
 
-            return response.result;
+            return response.data.result;
         } catch (error) {
             console.error(`RPC ${method} failed:`, error.message);
             throw error;

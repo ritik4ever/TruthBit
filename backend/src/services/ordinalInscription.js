@@ -9,92 +9,59 @@ dotenv.config();
 class OrdinalInscriptionService {
     constructor() {
         this.bitcoinNetwork = process.env.BITCOIN_NETWORK || 'signet';
+        this.mockMode = process.env.MOCK_INSCRIPTIONS === 'true';
+        this.tempDir = process.env.INSCRIPTIONS_DIR || path.resolve(process.cwd(), 'data/inscriptions');
 
-        // Mock mode configuration
-        const mockEnv = process.env.MOCK_INSCRIPTIONS;
-        this.mockMode = mockEnv === undefined ? true : mockEnv === 'true';
+        this.xverseApiKey = process.env.XVERSE_API_KEY || '';
+        this.xverseEndpoints = {
+            mainnet: 'https://api.secretkeylabs.io',
+            signet: 'https://api-signet.secretkeylabs.io',
+            testnet4: 'https://api-testnet4.secretkeylabs.io'
+        };
 
-        this.tempDir = './data/inscriptions';
+        // Choose correct API base URL
+        this.xverseBaseUrl =
+            process.env.ORDINALS_API_URL ||
+            this.xverseEndpoints[this.bitcoinNetwork] ||
+            this.xverseEndpoints.signet;
 
-        // RPC Configuration from environment variables
-        this.rpcHost = process.env.BITCOIN_RPC_HOST || '127.0.0.1';
-        this.rpcPort = process.env.BITCOIN_RPC_PORT || '38332';
-        this.rpcUser = process.env.BITCOIN_RPC_USER || 'bitcoinrpc';
-        this.rpcPass = process.env.BITCOIN_RPC_PASSWORD || 'CHANGE_THIS_PASSWORD_12345';
-        this.rpcUrl = `http://${this.rpcHost}:${this.rpcPort}`;
-        this.wallet = 'ord';
+        const headers = { 'Content-Type': 'application/json' };
+        if (this.xverseApiKey) headers['X-API-Key'] = this.xverseApiKey;
 
-        console.log('OrdinalInscriptionService initialized:');
-        console.log('  Mock mode:', this.mockMode);
-        console.log('  Network:', this.bitcoinNetwork);
-        console.log('  RPC URL:', `${this.rpcHost}:${this.rpcPort}`);
+        this.xverseClient = axios.create({
+            baseURL: this.xverseBaseUrl,
+            headers,
+            timeout: parseInt(process.env.XVERSE_TIMEOUT_MS || '60000', 10)
+        });
+
+        console.log('OrdinalInscriptionService initialized:', {
+            mockMode: this.mockMode,
+            network: this.bitcoinNetwork,
+            baseUrl: this.xverseBaseUrl,
+            hasKey: !!this.xverseApiKey
+        });
     }
 
     async init() {
         await fs.mkdir(this.tempDir, { recursive: true });
     }
 
-    // Bitcoin Core RPC call helper
-    async bitcoinRpc(method, params = []) {
-        const rpcCall = {
-            jsonrpc: '1.0',
-            id: 'truthbit',
-            method,
-            params
-        };
-
-        try {
-            const response = await axios.post(this.rpcUrl, rpcCall, {
-                auth: {
-                    username: this.rpcUser,
-                    password: this.rpcPass
-                },
-                headers: {
-                    'Content-Type': 'text/plain'
-                },
-                timeout: 30000
-            });
-
-            if (response.data.error) {
-                throw new Error(response.data.error.message);
-            }
-
-            return response.data.result;
-        } catch (error) {
-            console.error(`RPC ${method} failed:`, error.message);
-            throw error;
-        }
-    }
-
     async inscribe(data) {
         await this.init();
-
         const content = typeof data === 'string' ? data : JSON.stringify(data);
-
         console.log('Inscribe called - mock mode:', this.mockMode);
-
-        if (this.mockMode) {
-            return await this.mockInscribe(content);
-        }
-
-        return await this.realInscribe(content);
+        if (this.mockMode) return this.mockInscribe(content);
+        return this.realInscribe(content);
     }
 
     async mockInscribe(content) {
         const inscriptionId = `${Date.now()}${Math.random().toString(36).substring(2, 8)}i0`;
-
-        console.log('Mock Inscription created:', {
-            id: inscriptionId,
-            size: content.length,
-            network: this.bitcoinNetwork
-        });
-
         const inscriptionData = {
             inscriptionId,
             content,
             timestamp: new Date().toISOString(),
             network: this.bitcoinNetwork,
-            size: content.length,
+            size: Buffer.byteLength(content, 'utf8'),
             mock: true
         };
 
@@ -103,8 +70,9 @@ class OrdinalInscriptionService {
 
         return {
             inscriptionId,
-            timestamp: new Date().toISOString(),
-            size: content.length,
+            txid: null,
+            timestamp: inscriptionData.timestamp,
+            size: inscriptionData.size,
             fees: { total: 0, rate: 0 },
             mock: true
         };
@@ -112,120 +80,191 @@ class OrdinalInscriptionService {
 
     async realInscribe(content) {
         try {
-            console.log('Creating real inscription via Bitcoin Core RPC...');
+            if (!this.xverseApiKey) {
+                throw new Error('XVERSE_API_KEY not set. Set it in .env or enable MOCK_INSCRIPTIONS=true for dev.');
+            }
 
-            // Load wallet
+            // Check if we're on testnet - Xverse only supports mainnet inscriptions
+            if (this.bitcoinNetwork !== 'mainnet') {
+                console.warn(`⚠️  Xverse Inscription Service only supports mainnet. Current network: ${this.bitcoinNetwork}`);
+                console.warn('📝 Falling back to mock inscription for demo purposes.');
+                console.warn('💡 For production, use BITCOIN_NETWORK=mainnet or MOCK_INSCRIPTIONS=true');
+                return this.mockInscribe(content);
+            }
+
+            const size = Buffer.byteLength(content, 'utf8');
+            const MAX_SIZE = parseInt(process.env.INSCRIPTION_MAX_SIZE || '200000', 10);
+            if (size > MAX_SIZE) {
+                throw new Error(`Content too large for inscription (${size} bytes, max ${MAX_SIZE}).`);
+            }
+
+            // Optional cost estimate
             try {
-                await this.bitcoinRpc('loadwallet', [this.wallet]);
+                const estimate = await this.estimateInscriptionCost(content);
+                console.log('Estimated inscription cost:', estimate);
             } catch (e) {
-                if (!e.message.includes('already loaded')) {
-                    console.warn('Wallet load warning:', e.message);
+                console.warn('Cost estimation failed (continuing):', e.message || e);
+            }
+
+            // Pick correct receive address
+            const networkKey = this.bitcoinNetwork.toUpperCase();
+            const receiveAddress =
+                process.env[`RECEIVE_ADDRESS_${networkKey}`] ||
+                process.env[`${this.bitcoinNetwork.toUpperCase()}_RECEIVE_ADDRESS`] ||
+                process.env.SIGNET_RECEIVE_ADDRESS ||
+                process.env.RECEIVE_ADDRESS ||
+                null;
+
+            if (!receiveAddress) {
+                throw new Error(`Receive address not configured for network ${this.bitcoinNetwork}.`);
+            }
+
+            const postBody = {
+                content: Buffer.from(content, 'utf8').toString('base64'),
+                contentType: 'text/plain;charset=utf-8',
+                receiveAddress,
+                feeRate: process.env.DEFAULT_FEE_RATE || 'medium',
+                metadata: {
+                    protocol: 'truthbit-v1',
+                    timestamp: new Date().toISOString(),
+                    contentHash: crypto.createHash('sha256').update(content).digest('hex')
                 }
+            };
+
+            console.log('Posting inscription order to Xverse:', {
+                url: `${this.xverseBaseUrl}/v1/inscriptions/orders`,
+                size
+            });
+
+            // ✅ FIXED: Correct endpoint for inscriptions
+            const orderResponse = await this.xverseClient.post('/v1/inscriptions/orders', postBody);
+            const orderData = orderResponse?.data || {};
+
+            const orderId = orderData.orderId || orderData.id;
+            const paymentAddress = orderData.paymentAddress || orderData.payment_address || orderData.payment;
+            const totalCost = orderData.totalCost || orderData.total_cost || orderData.amount;
+            const inscriptionSize = orderData.inscriptionSize || orderData.inscription_size || orderData.size;
+
+            if (!orderId) {
+                console.error('Unexpected order response from Xverse:', orderData);
+                throw new Error('Unexpected order response from inscription API (missing orderId)');
             }
 
-            // Get change address
-            const changeAddress = await this.bitcoinRpc('getrawchangeaddress', ['bech32m']);
+            console.log('Inscription order created:', { orderId, paymentAddress, totalCost, inscriptionSize });
 
-            // Convert content to hex
-            const contentBuffer = Buffer.from(content, 'utf8');
-            const contentHash = crypto.createHash('sha256').update(content).digest('hex');
-
-            let dataHex;
-            let storageType;
-
-            if (contentBuffer.length > 75) {
-                const prefix = Buffer.from('ord:', 'utf8').toString('hex');
-                dataHex = prefix + contentHash;
-                storageType = 'hash';
-                console.log('Content size:', contentBuffer.length, 'bytes - storing hash on-chain');
+            if (this.bitcoinNetwork !== 'mainnet') {
+                console.log('Testnet/signet order created — PAYMENT REQUIRED:', {
+                    orderId,
+                    paymentAddress,
+                    totalCost
+                });
             } else {
-                const ordPrefix = Buffer.from('ord', 'utf8').toString('hex');
-                dataHex = ordPrefix + contentBuffer.toString('hex');
-                storageType = 'full';
-                console.log('Content size:', contentBuffer.length, 'bytes - storing full content on-chain');
+                console.log(`MAINNET: send ${totalCost} sats to ${paymentAddress} to complete inscription`);
             }
 
-            console.log('OP_RETURN data size:', dataHex.length / 2, 'bytes');
+            // Poll until completion
+            const inscriptionResult = await this.waitForInscription(
+                orderId,
+                parseInt(process.env.INSCRIPTION_MAX_ATTEMPTS || '30', 10),
+                parseInt(process.env.INSCRIPTION_POLL_MS || '10000', 10)
+            );
 
-            const outputs = [{ data: dataHex }];
-            const rawTx = await this.bitcoinRpc('createrawtransaction', [[], outputs]);
+            const inscriptionId = inscriptionResult.inscriptionId;
+            const txid = inscriptionResult.txid || null;
 
-            console.log('Funding transaction...');
-            const fundedResult = await this.bitcoinRpc('fundrawtransaction', [rawTx, {
-                feeRate: 0.00001,
-                changeAddress: changeAddress
-            }]);
-
-            console.log('Signing transaction...');
-            const signedResult = await this.bitcoinRpc('signrawtransactionwithwallet', [fundedResult.hex]);
-
-            if (!signedResult.complete) {
-                throw new Error('Transaction signing failed: ' + JSON.stringify(signedResult.errors || 'Unknown'));
-            }
-
-            console.log('Broadcasting transaction...');
-            const txid = await this.bitcoinRpc('sendrawtransaction', [signedResult.hex]);
-
-            const inscriptionId = `${txid}i0`;
-
-            console.log('Inscription created successfully!');
-            console.log('   TXID:', txid);
-            console.log('   Inscription ID:', inscriptionId);
-            console.log('   View: https://mempool.space/signet/tx/' + txid);
-
-            const inscriptionData = {
+            const saved = {
                 inscriptionId,
                 txid,
+                orderId,
                 content,
-                contentHash,
-                storageType,
+                contentHash: crypto.createHash('sha256').update(content).digest('hex'),
                 timestamp: new Date().toISOString(),
                 network: this.bitcoinNetwork,
-                size: content.length,
+                size,
+                fees: {
+                    total: totalCost,
+                    rate: orderData.feeRate || orderData.fee_rate || 'medium'
+                },
                 mock: false
             };
 
             const filePath = path.join(this.tempDir, `${inscriptionId}.json`);
-            await fs.writeFile(filePath, JSON.stringify(inscriptionData, null, 2));
+            await fs.writeFile(filePath, JSON.stringify(saved, null, 2));
+
+            console.log('Inscription saved successfully:', filePath);
 
             return {
                 inscriptionId,
                 txid,
-                timestamp: new Date().toISOString(),
-                size: content.length,
-                fees: {
-                    total: Math.round(fundedResult.fee * 100000000),
-                    rate: 1
-                },
+                orderId,
+                timestamp: saved.timestamp,
+                size,
+                fees: saved.fees,
                 network: this.bitcoinNetwork,
-                storageType,
+                explorerUrl: txid ? this.getExplorerUrl(txid) : null,
                 mock: false
             };
-
         } catch (error) {
-            console.error('Real inscription failed:', error.message);
-            throw new Error('Failed to create inscription: ' + error.message);
+            const resp = error.response?.data ?? error.message ?? error;
+            console.error('Real inscription failed:', resp);
+            const msg = typeof resp === 'object' ? JSON.stringify(resp) : String(resp);
+            throw new Error(`Failed to create inscription: ${msg}`);
         }
     }
 
-    async getBalance() {
+    async estimateInscriptionCost(content, feeRate = 'medium') {
         try {
-            const balance = await this.bitcoinRpc('getbalance');
-            return balance;
+            // ✅ FIXED: Correct endpoint for cost estimation
+            const response = await this.xverseClient.post('/v1/inscriptions/estimate', {
+                content: Buffer.from(content, 'utf8').toString('base64'),
+                contentType: 'text/plain;charset=utf-8',
+                feeRate
+            });
+
+            return {
+                estimatedCost: response.data.totalCost,
+                inscriptionSize: response.data.inscriptionSize,
+                networkFee: response.data.networkFee,
+                serviceFee: response.data.serviceFee
+            };
         } catch (error) {
-            console.error('Failed to get balance:', error);
-            return 0;
+            console.error('Cost estimation failed:', error.response?.data || error.message || error);
+            return {
+                estimatedCost: Buffer.byteLength(content, 'utf8') * 10,
+                inscriptionSize: Buffer.byteLength(content, 'utf8'),
+                networkFee: 'unknown',
+                serviceFee: 'unknown'
+            };
         }
     }
 
-    async getNewAddress() {
-        try {
-            const address = await this.bitcoinRpc('getnewaddress', ['', 'bech32m']);
-            return address;
-        } catch (error) {
-            console.error('Failed to get address:', error);
-            throw error;
+    async waitForInscription(orderId, maxAttempts = 30, delayMs = 10000) {
+        const delay = ms => new Promise(r => setTimeout(r, ms));
+        for (let i = 0; i < maxAttempts; i++) {
+            try {
+                // ✅ FIXED: Correct endpoint for checking order status
+                const response = await this.xverseClient.get(`/v1/inscriptions/orders/${orderId}`);
+                const status = response.data?.status;
+                console.log(`Inscription status: ${status} (attempt ${i + 1}/${maxAttempts})`);
+                if (status === 'completed') {
+                    return {
+                        inscriptionId: response.data.inscriptionId || response.data.inscription_id || null,
+                        txid: response.data.txid || response.data.tx || null,
+                        status: 'completed'
+                    };
+                }
+                if (status === 'failed') {
+                    throw new Error('Inscription failed: ' + (response.data?.error || JSON.stringify(response.data)));
+                }
+            } catch (error) {
+                console.log('Status check failed (will retry):', error.message || error);
+                if (i === maxAttempts - 1) {
+                    throw new Error('Inscription timeout or repeated failures: ' + (error.message || error));
+                }
+            }
+            await delay(delayMs * Math.min(1 + i * 0.25, 6));
         }
+        throw new Error('Inscription timeout after ' + maxAttempts + ' attempts');
     }
 
     async fetchInscription(inscriptionId) {
@@ -233,38 +272,60 @@ class OrdinalInscriptionService {
             const filePath = path.join(this.tempDir, `${inscriptionId}.json`);
             const data = await fs.readFile(filePath, 'utf8');
             return JSON.parse(data);
-        } catch (error) {
-            throw new Error('Inscription not found');
+        } catch {
+            // ✅ FIXED: Correct endpoint for fetching inscription
+            const response = await this.xverseClient.get(`/v1/inscriptions/orders/${inscriptionId}`);
+            return response.data;
         }
     }
 
     async verifyInscription(inscriptionId) {
         if (this.mockMode) {
-            return {
-                valid: true,
-                inscriptionId,
-                message: 'Mock inscription verified'
-            };
+            return { valid: true, inscriptionId, message: 'Mock inscription verified' };
         }
-
         try {
-            const txid = inscriptionId.split('i')[0];
-            const tx = await this.bitcoinRpc('getrawtransaction', [txid, true]);
-
+            // ✅ FIXED: Correct endpoint for verifying inscription
+            const response = await this.xverseClient.get(`/v1/inscriptions/orders/${inscriptionId}`);
             return {
                 valid: true,
                 inscriptionId,
-                txid,
-                confirmations: tx.confirmations || 0,
+                txid: response.data.txid,
+                confirmations: response.data.confirmations || 0,
                 message: 'Inscription verified on blockchain'
             };
-        } catch (error) {
-            return {
-                valid: false,
-                inscriptionId,
-                message: 'Inscription not found on blockchain'
-            };
+        } catch {
+            return { valid: false, inscriptionId, message: 'Inscription not found on blockchain' };
         }
+    }
+
+    getExplorerUrl(txid) {
+        const explorers = {
+            mainnet: `https://mempool.space/tx/${txid}`,
+            signet: `https://mempool.space/signet/tx/${txid}`,
+            testnet4: `https://mempool.space/testnet4/tx/${txid}`
+        };
+        return explorers[this.bitcoinNetwork] || explorers.signet;
+    }
+
+    async getBalance() {
+        return 0;
+    }
+
+    async getNewAddress() {
+        return await this.getReceiveAddress();
+    }
+
+    async getReceiveAddress() {
+        const networkKey = this.bitcoinNetwork.toUpperCase();
+        const addrFromEnv =
+            process.env[`RECEIVE_ADDRESS_${networkKey}`] ||
+            process.env[`${this.bitcoinNetwork.toUpperCase()}_RECEIVE_ADDRESS`] ||
+            process.env.SIGNET_RECEIVE_ADDRESS ||
+            process.env.RECEIVE_ADDRESS ||
+            null;
+
+        if (addrFromEnv) return addrFromEnv;
+        throw new Error(`Receive address not configured. Set RECEIVE_ADDRESS_${networkKey} or SIGNET_RECEIVE_ADDRESS.`);
     }
 }
 

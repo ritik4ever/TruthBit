@@ -12,13 +12,25 @@ class APIService {
         };
 
         try {
-            const response = await fetch(`${API_BASE}${endpoint}`, {
+            const base = (API_BASE || '').replace(/\/+$/, ''); // remove trailing slashes
+            let ep = endpoint || '';
+            if (!ep.startsWith('/')) ep = '/' + ep;
+
+            // if base already ends with /api and endpoint starts with /api, remove duplicate
+            if (base.toLowerCase().endsWith('/api') && ep.startsWith('/api')) {
+                ep = ep.replace(/^\/api/, '');
+            }
+
+            const url = `${base}${ep}`;
+            console.debug('API Request URL:', url, options.method || 'GET');
+
+            const response = await fetch(url, {
                 ...options,
                 headers
             });
 
             if (!response.ok) {
-                const error = await response.json();
+                const error = await response.json().catch(() => ({ message: 'Request failed' }));
                 throw new Error(error.message || 'Request failed');
             }
 
@@ -61,6 +73,20 @@ class APIService {
 
     async getIdentity(id) {
         return this.request(`/api/identity/${id}`);
+    }
+
+    async signDocument(signatureData) {
+        return this.request('/api/signatures/sign', {
+            method: 'POST',
+            body: JSON.stringify(signatureData)
+        });
+    }
+
+    async verifySignature(documentHash) {
+        return this.request('/api/signatures/verify', {
+            method: 'POST',
+            body: JSON.stringify({ documentHash })
+        });
     }
 }
 

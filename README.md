@@ -2,29 +2,38 @@
 
 TruthBit — Trustless Publishing on Bitcoin
 
-Publish, Verify, and Preserve Truth — Powered by Xverse + Bitcoin Ordinals
+Publish, Sign, Verify, and Preserve Truth — Powered by Xverse + Bitcoin Ordinals
 
-TruthBit is a decentralized publishing platform that allows users to sign documents, publish articles publicly or anonymously, and verify them on-chain — leveraging the Xverse API and Bitcoin Ordinals.
+TruthBit is a decentralized publishing and document verification platform built on the Bitcoin blockchain.
+It allows users to sign documents, publish articles (publicly or anonymously), and verify authenticity on-chain, leveraging the Xverse API and Bitcoin Ordinals.
+
+🌐 Live Demo
+
+🔗 Website: https://truth-bit.vercel.app/
+
+🎥 Demo Video: https://youtu.be/2UWFuG6ftw8
 
 🚀 Features
 
-✍️ Create & Sign Articles — Digitally sign your content using cryptographic proofs.
+✍️ Create & Sign Articles — Digitally sign content with cryptographic proofs.
 
-🔐 Publish Anonymously or Publicly — Choose your identity visibility.
+🔐 Publish Publicly or Anonymously — Choose visibility and protect your identity.
 
-🧾 Verify Authenticity On-Chain — Immutable record of truth on the Bitcoin blockchain.
+🧾 Verify Authenticity On-Chain — Every publication becomes an immutable Bitcoin record.
 
-⚡ Powered by Xverse API — Secure inscription and storage using SecretKey Labs endpoints.
+⚡ Powered by Xverse API — Secure inscription and storage via SecretKey Labs endpoints.
 
-🌐 Fullstack App — Seamless frontend + backend integration.
+🌐 Fullstack DApp — Smooth integration between frontend and backend.
+
+📜 Document Signing — Sign and verify official documents with Ordinal-based proofs.
 
 🏗️ Tech Stack
-Layer	Tech Used
+Layer	Technology
 Frontend	React + Vite + TailwindCSS
 Backend	Node.js + Express
-Blockchain	Bitcoin Signet/Testnet via Xverse API
+Blockchain	Bitcoin (Signet/Testnet via Xverse API)
 Storage	Local JSON database (mock)
-Auth	Optional MetaMask / Wallet signing (coming soon)
+Auth (upcoming)	Wallet-based signing via MetaMask / Xverse
 ⚙️ Setup Instructions
 1️⃣ Clone the Repository
 git clone https://github.com/<your-username>/truthbit.git
@@ -34,18 +43,22 @@ cd truthbit
 cd backend
 npm install
 
-Create .env file
+
+Create a .env file in the backend directory:
+
 PORT=5000
 BITCOIN_NETWORK=signet
 XVERSE_API_KEY=your_secret_xverse_api_key
 INSCRIPTION_MAX_ATTEMPTS=30
 INSCRIPTION_POLL_MS=10000
 
-Run the backend
+
+Start the backend server:
+
 npm run dev
 
 
-Your backend runs at http://localhost:5000
+Your backend runs at: http://localhost:5000
 
 3️⃣ Frontend Setup
 cd frontend
@@ -53,21 +66,20 @@ npm install
 npm run dev
 
 
-Frontend runs at http://localhost:5173
- (by default)
+Your frontend runs at: http://localhost:5173
 
 🔗 Xverse API Configuration
 
-TruthBit integrates with SecretKey Labs (Xverse):
+TruthBit integrates with SecretKey Labs (Xverse) endpoints:
 
 Network	Endpoint URL
 Mainnet	https://api.secretkeylabs.io
+
 Signet	https://api-signet.secretkeylabs.io
+
 Testnet4	https://api-testnet4.secretkeylabs.io
 
-All requests require your XVERSE_API_KEY in the Authorization header.
-
-Example:
+All requests must include your API key:
 
 Authorization: Bearer your_secret_xverse_api_key
 
@@ -79,12 +91,12 @@ GET	/api/content/articles/:id	Fetch a specific article
 POST	/api/content/articles/:id/view	Increment article view count
 🪶 Publishing Flow
 
-1️⃣ User writes or uploads content.
-2️⃣ Content is signed cryptographically.
-3️⃣ A cost estimation is requested from the Xverse API.
-4️⃣ The inscription order is created.
-5️⃣ The article is permanently inscribed on Bitcoin.
-6️⃣ A verification badge + ordinal ID are shown to the user.
+1️⃣ User writes or uploads content
+2️⃣ Content is digitally signed
+3️⃣ Xverse API estimates cost
+4️⃣ Inscription order is created
+5️⃣ Article is inscribed on Bitcoin
+6️⃣ Verification badge + Ordinal ID displayed to the user
 
 🧱 Example Output
 Inscribe called - mock mode: false
@@ -105,9 +117,9 @@ Inscription confirmed: inscriptionId=ord_article_1759762210469
 
 🧾 License
 
-This project is licensed under the MIT License — open for innovation.
+This project is licensed under the MIT License — open for innovation and collaboration.
 
 💬 Credits
 
 Built with ❤️ by Ritik
-Powered by Bitcoin, Xverse API, TruthBit Community and Open Ordinal Community
+Powered by Bitcoin, Xverse API, TruthBit Community, and Open Ordinal Hackathon.

@@ -9,6 +9,9 @@ import Publish from './pages/Publish';
 import Article from './pages/Article';
 import Verify from './pages/Verify';
 import Sign from './pages/Sign';
+import Terms from './pages/Terms';
+import Privacy from './pages/Privacy';
+
 // REMOVED DUPLICATE: import Verify from './pages/Verify';
 
 
@@ -64,6 +67,8 @@ function App() {
                         />
                         <Route path="/article/:id" element={<Article user={user} />} />
                         <Route path="/verify" element={<Verify />} />
+                        <Route path="/terms" element={<Terms />} />
+                        <Route path="/privacy" element={<Privacy />} />
                     </Routes>
                 </main>
                 <Footer />

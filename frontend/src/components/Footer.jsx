@@ -34,6 +34,14 @@ function Footer() {
                     </div>
 
                     <div>
+                        <h4 style={{ marginBottom: '16px', fontWeight: 600 }}>Legal</h4>
+                        <ul style={{ listStyle: 'none' }}>
+                            <FooterLink href="/terms">Terms of Use</FooterLink>
+                            <FooterLink href="/privacy">Privacy Policy</FooterLink>
+                        </ul>
+                    </div>
+
+                    <div>
                         <h4 style={{ marginBottom: '16px', fontWeight: 600 }}>Resources</h4>
                         <ul style={{ listStyle: 'none' }}>
                             <FooterLink href="#">Documentation</FooterLink>
